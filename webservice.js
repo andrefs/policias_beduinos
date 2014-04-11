@@ -76,10 +76,11 @@ http.createServer(function (req, res) {
 			res.end('Manda start e end carago!');
 			return;
 		}
-		req.args.start = parseInt(req.args.start) * 1000000;
-		req.args.end = parseInt(req.args.end) * 1000000 + 1;
-		req.args.occurs = parseInt(req.args.occurs) || 10;
-		return getTopics(req.args.start,req.args.end,req.args.occurs,function(err,topics){
+		req.args.start		= parseInt(req.args.start) * 1000000;
+		req.args.end		= parseInt(req.args.end) * 1000000 + 1;
+		req.args.occurs		= parseInt(req.args.occurs) || 10;
+		req.args.threshold	= parseInt(req.args.threshold) || 10;
+		return getTopics(req.args.start,req.args.end,req.args.occurs,req.args.threshold,function(err,topics){
 			if ( err ) {
 				res.writeHead(500, {'Content-Type': 'text/plain'});
 				res.end('Erro a obter os topicos');
@@ -137,6 +138,7 @@ function getWordsByDate(start,end,handler) {
 				return;
 			}
 			byWord[d.word] = d;
+			d.p = totals[d.word] / totalKeys;		// Alterar esta regra para outra mais apropriada. Ao gosto do freguês
 			retList.push(d);
 			delete d['_id'];
 		});
@@ -145,6 +147,9 @@ function getWordsByDate(start,end,handler) {
 		retList.forEach(function(i){
 			if ( i.ids )
 				i.ids = Object.keys(i.ids);
+		});
+		retList = retList.sort(function(a,b){
+			return (a.p > b.p) ? 1 : (a.p < b.p) ? -1 : 0;
 		});
 
 		console.log("Returned list of word for the period "+start+" -> "+end+" with "+grouped+" grouped results");
@@ -175,7 +180,7 @@ function getRelevantWordsByDate(start,end,min_occurs,handler) {
 
 }
 
-function getTopics(start,end,min_occurs,handler) {
+function getTopics(start,end,min_occurs,threshold,handler) {
 
 	return getRelevantWordsByDate(start,end,min_occurs,function(err,relevants){
 		if ( err )
@@ -241,7 +246,7 @@ function getTopics(start,end,min_occurs,handler) {
 					return;
 				seed.topLinked = [];
 				for ( var word in seed.linked ) {
-					if ( seed.linked[word] > seed.ocurs - 10 && word != seed.word )
+					if ( seed.linked[word] > seed.ocurs - threshold && word != seed.word )
 						seed.topLinked.push(word);
 				}
 				seed.topLinked = seed.topLinked.sort(function(a,b){
