@@ -90,6 +90,11 @@ http.createServer(function (req, res) {
 		});
 
 	}
+	else {
+		res.writeHead(404, {'Content-Type': 'text/plain'});
+		res.end('N percebes nada disto');
+		return;
+	}
 
 }).listen(8080, '0.0.0.0');
 console.log('Server running at http://0.0.0.0:8080/');
@@ -185,9 +190,68 @@ function getTopics(start,end,min_occurs,handler) {
 				articleIDS[id] = true;
 			});
 		});
+		articleIDS = Object.keys(articleIDS);
+
+		var
+			wordsByArticle = {};
 
 		// Get all words from refered articles
-		
+		console.log("Getting words of "+articleIDS.length+" referred articles...");
+		var qstart = new Date();
+		var numArts = 0;
+		db.instance("default").find("wordsByDate",{id:{$in:articleIDS},word:{$ne:"_orig"},where:{$in:["Title","Description"]}},{word:1,ocurs:1,id:1},function(err,items){
+			if ( err )
+				return handler(err,null);
+
+			items.forEach(function(item){
+				if ( wordsByArticle[item.id] == null )
+					wordsByArticle[item.id] = [];
+				wordsByArticle[item.id].push(item);
+				numArts++;
+			});
+
+			console.log("Done. Got "+numArts+" words for "+articleIDS.length+" articles. Took "+(new Date()-qstart)+" ms");
+
+			// For each seed
+			relevants.forEach(function(seed){
+				if ( !seed.ids )
+					return;
+
+				// For each document
+				seed.ids.forEach(function(id){
+					var words = wordsByArticle[id];
+					if ( !words )
+						return;	// Article not found
+
+					// For each word on the document
+					words.forEach(function(item){
+						if ( !seed.linked )
+							seed.linked = {};
+						if ( seed.linked[item.word] == null )
+							seed.linked[item.word] = item.ocurs;
+						else
+							seed.linked[item.word] += item.ocurs;
+					});
+				});
+			});
+
+			// Build top linked words
+			relevants.forEach(function(seed){
+				if ( !seed.linked )
+					return;
+				seed.topLinked = [];
+				for ( var word in seed.linked ) {
+					if ( seed.linked[word] > seed.ocurs - 10 && word != seed.word )
+						seed.topLinked.push(word);
+				}
+				seed.topLinked = seed.topLinked.sort(function(a,b){
+					return ( seed.linked[a] < seed.linked[b] ) ? 1 : ( seed.linked[a] > seed.linked[b] ) ? -1 : 0;
+				});
+				delete seed.linked;
+			});
+
+			return handler(null,relevants);
+		});
 
 	});
 
