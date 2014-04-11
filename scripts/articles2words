@@ -1,0 +1,126 @@
+#!/usr/bin/perl
+
+use warnings;
+use strict;
+use utf8::all;
+use POSIX qw(ceil);
+
+use Storable;
+use File::Find;
+use Data::Dumper;
+use Lingua::FreeLing3::Utils qw/word_analysis/;
+use Lingua::StopWords qw( getStopWords );
+use FL3 'pt';
+
+my $root = '/Users/david/projects/codebits/articles';
+my $stopwords = getStopWords('pt');
+my $missing = 0;
+
+my $c = 1;
+#find(\&proc_article, $root);
+
+# Get arguments (master is called without arguments, slave is called with SEGMENT_ID)
+my $master = 1;
+my $seg = $ARGV[0];
+$master = 0 if defined($seg) && length($seg) > 0;
+
+# Get all files
+find(\&get_all_files, $root);
+my @files;
+sub get_all_files {
+	my $name = $_;
+	push @files, $name;
+}
+
+# Split in segments of 20000
+if ( $master ) {
+	print "files: ".scalar(@files)."\n";
+	my $segNum = ceil(scalar(@files) / 20000);
+	for ( my $x = 0 ; $x < $segNum ; $x++ ) {
+		if ( !fork() ) {
+			exit(system("$0 $x\n"));
+		}
+	}
+	print "segments: $segNum\n";
+}
+else {
+	my $skip = $seg * 20000;
+	my $end = $skip + 20000 -1;
+#	@files = splice(@files, $skip, 20000);
+	@files = @files[$skip .. $end];
+	print "HI! I AM SEGMENT $seg, I WILL TAKE ".scalar(@files)." files\n";
+	foreach my $f ( @files ) {
+		proc_article($f);
+#		check_article($f);
+	}
+	print "TOTAL: $missing missing files\n";
+	exit 0;
+}
+
+sub check_article {
+  my $name = shift;
+  my $path = "articles/$name";
+  return if -d $path;
+#  print STDERR "Working on $name\n";
+  my $a = eval { retrieve $path };
+  if ( $@ ) {
+    print STDERR "FAILED ON $path: $@\n";
+    return;
+  }
+  my $date = $a->{InternalRefs}->{RegisterDate};
+  $date =~ s/\.\d+Z$//;
+  $date =~ s/[\-\:]//g;
+  my $file = $date."_".$name;
+  unless ( -f "words/$file" ) {
+    print STDERR "Missing file '$file' for '$name'\n";
+    $missing++;
+  }
+}
+
+sub proc_article {
+  my $name = shift;
+  my $path = "articles/$name";
+  return if -d $path;
+  print STDERR "Working on $name\n";
+  my $a = eval { retrieve $path };
+  if ( $@ ) {
+    print STDERR "FAILED ON $path: $@\n";
+    return;
+  }
+  my $date = $a->{InternalRefs}->{RegisterDate};
+  $date =~ s/\.\d+Z$//;
+  $date =~ s/[\-\:]//g;
+  my $file = $date."_".$name;
+  if ( -f "words/$file" ) {
+    print STDERR "Skipping '$name' (already exists)\n";
+    return;
+  }
+  my $data = {};
+  foreach my $f ('Title','Description','Body') {
+    my $txt = $a->{$f};
+    next if !$txt || $txt =~ /^\s*$/s;
+    if ( $txt ) {
+      $txt =~ s/<[^>]+>//g;
+      $txt =~ s/&([^;]{,20});//g;
+    }
+#   my @words = split /\W+/, $txt;
+    my $words = tokenizer->tokenize($txt);
+    foreach (@{$words}) {
+      my $word = $_->form;
+      next if (exists $stopwords->{lc($word)});
+      next unless $word;
+      next if $word !~ /\w/;
+      next if length($word) < 2; 	# FIXME: ganda martelada
+      my $analysis = word_analysis({ l=>'pt' }, $word);
+      my $xxx = shift @$analysis;
+      my $lemma = $xxx->{lemma} || $word;
+      $data->{$f} ||= {};
+      $data->{$f}->{$lemma}++;
+    }
+    $data->{$f}->{_orig} = $txt;
+  }
+  store($data,"words/$file");
+#  use Data::Dumper;
+#  print Dumper($data);
+}
+
