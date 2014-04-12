@@ -108,11 +108,14 @@ console.log('Server running at http://0.0.0.0:8080/');
 
 function getWordsByDate(start,end,handler) {
 
-	return db.instance("default").find("wordsByDate",{date:{$gt:start,$lt:end},where:{$in:["Title","Description"]}},{word:1,ocurs:1,id:1},function(err,data){
+	var qstart = new Date();
+	return db.instance("default").find("wordsByDate",{date:{$gt:start,$lt:end},imp:1,word:{$ne:"_orig"}},{word:1,ocurs:1,id:1},function(err,data){
 		if ( err ) {
 			console.log("A query deu errors: ",err);
 			return handler(err,null);
 		}
+		console.log("Got words by date in "+(new Date()-qstart)+" ms");
+
 		var
 			byWord = {},
 			retList = [],
@@ -206,7 +209,7 @@ function getTopics(start,end,min_occurs,threshold,cluster,handler) {
 		console.log("Getting words of "+articleIDS.length+" referred articles...");
 		var qstart = new Date();
 		var numArts = 0;
-		db.instance("default").find("wordsByDate",{id:{$in:articleIDS},word:{$ne:"_orig"},where:{$in:["Title","Description"]}},{word:1,ocurs:1,id:1},function(err,items){
+		db.instance("default").find("wordsByDate",{id:{$in:articleIDS},word:{$ne:"_orig"},imp:1},{word:1,ocurs:1,id:1},function(err,items){
 			if ( err )
 				return handler(err,null);
 
