@@ -16,7 +16,8 @@
 
 
 <script>
-    var start,end;
+    var start = new Date(2014, 02, 1 ),
+        end   = new Date(2014, 02, 31);
     $("#slider").dateRangeSlider({
         defaultValues:{
             min: new Date(2014, 02, 1),
