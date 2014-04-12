@@ -78,9 +78,10 @@ http.createServer(function (req, res) {
 		}
 		req.args.start		= parseInt(req.args.start) * 1000000;
 		req.args.end		= parseInt(req.args.end) * 1000000 + 1;
-		req.args.occurs		= parseInt(req.args.occurs) || 10;
-		req.args.threshold	= parseInt(req.args.threshold) || 10;
-		return getTopics(req.args.start,req.args.end,req.args.occurs,req.args.threshold,function(err,topics){
+		req.args.occurs		= parseInt(req.args.occurs)		|| 10;
+		req.args.threshold	= parseInt(req.args.threshold)		|| 10;
+		req.args.cluster	= (req.args.cluster && req.args.cluster != "false") ? true : false;
+		return getTopics(req.args.start,req.args.end,req.args.occurs,req.args.threshold,req.args.cluster,function(err,topics){
 			if ( err ) {
 				res.writeHead(500, {'Content-Type': 'text/plain'});
 				res.end('Erro a obter os topicos');
@@ -180,14 +181,15 @@ function getRelevantWordsByDate(start,end,min_occurs,handler) {
 
 }
 
-function getTopics(start,end,min_occurs,threshold,handler) {
+function getTopics(start,end,min_occurs,threshold,cluster,handler) {
 
 	return getRelevantWordsByDate(start,end,min_occurs,function(err,relevants){
 		if ( err )
 			return handler(err,null);
 
 		// Get all the articles involved
-		var articleIDS = {};
+		var
+			articleIDS = {};
 		relevants.forEach(function(item){
 			if ( item.ids == null )
 				return;
@@ -255,7 +257,45 @@ function getTopics(start,end,min_occurs,threshold,handler) {
 				delete seed.linked;
 			});
 
-			return handler(null,relevants);
+			// Filter them (remove those who have seeds on topLinked)
+			if ( cluster ) {
+				var
+					seedByWord = {},
+					finalItems = [];
+				relevants.forEach(function(seed){
+					if ( seed.topLinked ) {
+						var found = null;
+						for ( x = 0 ; x < seed.topLinked.length ; x++ ) {
+							var word = seed.topLinked[x];
+							if ( seedByWord[word] ) {
+								found = seedByWord[word];
+								break;
+							}
+						}
+						if ( found == null ) {
+							finalItems.push(seed);
+							seedByWord[seed.word] = seed;
+						}
+						else {
+							var allLinked = {};
+							found.topLinked.forEach(function(word){
+								if ( word != found.word )
+									allLinked[word] = true;
+							});
+							allLinked[seed.word] = true;
+							found.topLinked = Object.keys(allLinked);
+							if ( !found.clustered )
+								found.clustered = 1;
+							else
+								found.clustered++;
+						}
+					}
+				});
+			}
+			else
+				finalItems = relevants;
+
+			return handler(null,finalItems);
 		});
 
 	});
