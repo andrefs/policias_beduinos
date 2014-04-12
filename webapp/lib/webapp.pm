@@ -12,6 +12,24 @@ use utf8::all;
 my $provider = 'http://144.64.228.184:8080';
 my $words_root = '/Users/smash/codebits/words_js';
 
+get '/clouds/:start/:end' => sub {
+  my $start = param 'start';
+  my $end = param 'end';
+
+  my $req = "$provider/getTopics?start=$start&end=$end&cluster=true";
+  my $json = LWP::Simple::get($req);
+  return unless $json;
+
+  my $data = from_json $json;
+
+  my @clouds;
+  foreach (@$data) {
+    push @clouds, _build_cloud($_);
+  }
+
+  return join("<br><hr><br>\n", @clouds);
+};
+
 get '/' => sub {
   my $req = "$provider/getTopics?start=20140301&end=20140331&cluster=true";
   my $json = LWP::Simple::get($req);
@@ -28,6 +46,7 @@ print STDERR Dumper($data);
 
   template 'index' => { clouds => [@clouds], data =>$data };
 };
+
 
 sub _build_cloud {
   my $data = shift;
