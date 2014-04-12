@@ -15,6 +15,7 @@ my $words_root = '/Users/smash/codebits/words_js';
 get '/clouds/:start/:end' => sub {
   my $start = param 'start';
   my $end = param 'end';
+  print STDERR "req clouds start $start end $end\n";
 
   my $req = "$provider/getTopics?start=$start&end=$end&cluster=true";
   my $json = LWP::Simple::get($req);

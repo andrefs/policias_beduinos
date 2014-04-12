@@ -1,26 +1,41 @@
 
 
+<div id="header">
 <div id="slider"></div>
+<button id="go" type="button">Get topics</button>
+</div>
 
+<div id="cloud">
 [% FOREACH c IN clouds %]
   [% c %]
 <br>
   <hr>
 <br>
 [% END %]
+</div>
 
-
-
-<pre>
-[% USE Dumper %]
-[% Dumper.dump(data) %]
-</pre>
 
 <script>
-    $("#slider").dateRangeSlider();
+    var start,end;
+    $("#slider").dateRangeSlider({
+        defaultValues:{
+            min: new Date(2014, 02, 1),
+            max: new Date(2014, 02, 31)
+        },
+        bounds:{
+            min: new Date(2012, 0, 1),
+            max: new Date(2014, 02, 31)
+        }
+    });
     // This event will be fired
+    $('#go').click(function(x){
+        $('#cloud').html('loading...');
+        jQuery.get('/clouds/'+start+'/'+end, function(data){
+            $('#cloud').html(data);
+        });
+    });
     $("#slider").bind("valuesChanged", function(e, data){
-        var start = data.values.min.toISOString().substr(0,10).replace(/-/g,'');
-        var end   = data.values.min.toISOString().substr(0,10).replace(/-/g,'');
+        start = data.values.min.toISOString().substr(0,10).replace(/-/g,'');
+        end   = data.values.max.toISOString().substr(0,10).replace(/-/g,'');
     });
 </script>

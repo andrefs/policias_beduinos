@@ -22,9 +22,11 @@
 
   <script src="/javascripts/jQRuler.js"></script>
   </head>
-<body>
+<body >
+<div id="supercontainer" style="width:980px;margin:auto">
 
 [% content %]
+</div>
 
 </body>
 </html>
