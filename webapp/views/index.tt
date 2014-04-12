@@ -1,4 +1,8 @@
-
+<style>
+#cloud img {
+width: 242px;
+}
+</style>
 
 <div id="header">
 <div id="slider"></div>
@@ -6,6 +10,7 @@
 </div>
 
 <div id="cloud">
+[% images %]
 [% FOREACH c IN clouds %]
   [% c %]
 <br>
@@ -16,8 +21,8 @@
 
 
 <script>
-    var start = new Date(2014, 02, 1 ),
-        end   = new Date(2014, 02, 31);
+    var start = "20140301",
+        end   = "20140331";
     $("#slider").dateRangeSlider({
         defaultValues:{
             min: new Date(2014, 02, 1),

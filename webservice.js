@@ -4,21 +4,29 @@ var
 	fs = require('fs'),
 	http = require('http'),
 	qs = require('querystring'),
-	db = require('./lib/db');
+	db = require('./lib/db'),
+	totals,
+	totalKeys  = 0,
+	totalOcurs = 0,
+	cache = {};
 
 
 // Read totals JSON
 
 console.log("Reading totals..");
-var totals = JSON.parse(fs.readFileSync("totals.json").toString());
-var totalKeys = Object.keys(totals).length;
-var totalOcurs = 0;
+totals = JSON.parse(fs.readFileSync("totals.json").toString());
+totalKeys = Object.keys(totals).length;
 for ( var k in totals )
 	totalOcurs += totals[k];
 console.log("totals: "+totalKeys+" / "+totalOcurs);
 
 
+// Webçerber
+
 http.createServer(function (req, res) {
+
+	req.originalURL = req.url;
+	req.reachTime = new Date();
 	if ( req.url && req.url.match(/\?(.*)$/) ) {
 		var args = RegExp.$1;
 		req.args = qs.parse(args);
@@ -27,6 +35,8 @@ http.createServer(function (req, res) {
 	if ( !req.args )
 		req.args = {};
 
+	if ( getCache(req,res) )
+		return; 
 
 	if ( req.url == "/wordsByDate" ) {
 		if ( !req.args.start || !req.args.end ) {
@@ -44,7 +54,7 @@ http.createServer(function (req, res) {
 				return;
 			}
 			res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
-			res.end(JSON.stringify(data));
+			answer(req,res,JSON.stringify(data));
 		});
 
 	}
@@ -66,7 +76,7 @@ http.createServer(function (req, res) {
 			}
 
 			res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
-			res.end(JSON.stringify(relevants,null,4));
+			answer(req,res,JSON.stringify(relevants));
 		});
 	}
 	else if ( req.url == "/getTopics" ) {
@@ -81,14 +91,57 @@ http.createServer(function (req, res) {
 		req.args.occurs		= parseInt(req.args.occurs)		|| 10;
 		req.args.threshold	= parseInt(req.args.threshold)		|| 10;
 		req.args.cluster	= (req.args.cluster && req.args.cluster != "false") ? true : false;
+		req.args.contents	= parseInt(req.args.contents)		|| 0;
 		return getTopics(req.args.start,req.args.end,req.args.occurs,req.args.threshold,req.args.cluster,function(err,topics){
 			if ( err ) {
 				res.writeHead(500, {'Content-Type': 'text/plain'});
 				res.end('Erro a obter os topicos');
 				return;
 			}
-			res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
-			res.end(JSON.stringify(topics,null,4));
+
+			// No contents?
+			if ( !req.args.contents )
+				return answer(req,res,200,JSON.stringify(topics));
+
+			// Hash content ids
+			var ids = {};
+			topics.forEach(function(topic){
+				if ( !topic.ids )
+					return;
+				var c = -1;
+				topic.ids.forEach(function(id){
+					c++;
+					if ( c >= req.args.contents )
+						return;
+					if ( !ids[id] )
+						ids[id] = [];
+					ids[id].push(topic);
+				});
+			});
+			if ( Object.keys(ids).length == 0 )
+				return answer(req,res,200,JSON.stringify(topics));
+
+			// Get contents
+			return getContents(Object.keys(ids),function(err,contents){
+				if ( err ) {
+					console.log("Error getting contents: ",err);
+					return answer(req,res,200,JSON.stringify(topics));
+				}
+
+				// Find topics for each content
+				contents.forEach(function(c){
+					if ( !ids[c.id] )
+						return;
+					ids[c.id].forEach(function(topic){
+						if ( !topic.contents )
+							topic.contents = [];
+						topic.contents.push(c);
+					});
+				});
+
+				return answer(req,res,200,JSON.stringify(topics));
+			});
+
 		});
 
 	}
@@ -103,8 +156,46 @@ console.log('Server running at http://0.0.0.0:8080/');
 
 
 
-
 // Functions
+
+function answer(req,res,status,data) {
+
+	var
+		k = req.cache_key || req.url;
+
+//	console.log("SET: "+k);
+	cache[k] = { status: status, data: data, expires: new Date().getTime() + 120000 };
+	res.writeHead(cache[k].status, {'Content-Type': 'text/plain; charset=utf-8'});
+	res.end(cache[k].data);
+
+	console.log(req.originalURL+" "+(new Date()-req.reachTime)+" ms (L)");
+}
+
+function getCache(req,res) {
+
+	var
+		k = req.url + "?";
+
+	Object.keys(req.args).sort().forEach(function(arg){
+		k += arg+"="+req.args[arg]+"&";
+	});
+	req.cache_key = k;
+//	console.log("GET: "+k);
+
+	if ( cache[k] ) {
+		if ( cache[k].expires > new Date().getTime() ) {
+			res.writeHead(cache[k].status, {'Content-Type': 'text/plain; charset=utf-8'});
+			res.end(cache[k].data);
+			console.log(req.originalURL+" "+(new Date()-req.reachTime)+" ms (C)");
+			return true;
+		}
+		else {
+			delete cache[k];
+		}
+	}
+	return false;
+
+}
 
 function getWordsByDate(start,end,handler) {
 
@@ -257,7 +348,7 @@ function getTopics(start,end,min_occurs,threshold,cluster,handler) {
 				seed.topLinked = seed.topLinked.sort(function(a,b){
 					return ( seed.linked[a] < seed.linked[b] ) ? 1 : ( seed.linked[a] > seed.linked[b] ) ? -1 : 0;
 				});
-				delete seed.linked;
+//				delete seed.linked;
 			});
 
 			// Filter them (remove those who have seeds on topLinked)
@@ -301,6 +392,20 @@ function getTopics(start,end,min_occurs,threshold,cluster,handler) {
 			return handler(null,finalItems);
 		});
 
+	});
+
+}
+
+// Get contents
+function getContents(ids,handler) {
+
+	console.log("Getting contents for "+ids.length+" ids...");
+	var qstart = new Date();
+	return db.instance("default").find("contents",{id:{$in:ids}},{},{sort:{DateTime:1}},function(err,contents){
+		if ( err )
+			return handler(err,null);
+		console.log("Done. Got "+contents.length+" contents. Took "+(new Date()-qstart)+" ms");
+		return handler(null,contents);
 	});
 
 }

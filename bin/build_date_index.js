@@ -3,7 +3,7 @@
 var
 	async = require('async'),
 	fs = require('fs'),
-	db = require('./lib/db'),
+	db = require('../lib/db'),
 	n = -1;
 
 fs.readdir("words_js/pt/",function(err,files){
