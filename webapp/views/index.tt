@@ -1,0 +1,13 @@
+[% FOREACH c IN clouds %]
+  [% c %]
+<br>
+  <hr>
+<br>
+[% END %]
+
+
+
+<pre>
+[% USE Dumper %]
+[% Dumper.dump(data) %]
+</pre>
