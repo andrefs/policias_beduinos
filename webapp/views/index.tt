@@ -1,3 +1,7 @@
+
+
+<div id="slider"></div>
+
 [% FOREACH c IN clouds %]
   [% c %]
 <br>
@@ -11,3 +15,12 @@
 [% USE Dumper %]
 [% Dumper.dump(data) %]
 </pre>
+
+<script>
+    $("#slider").dateRangeSlider();
+    // This event will be fired
+    $("#slider").bind("valuesChanged", function(e, data){
+        var start = data.values.min.toISOString().substr(0,10).replace(/-/g,'');
+        var end   = data.values.min.toISOString().substr(0,10).replace(/-/g,'');
+    });
+</script>

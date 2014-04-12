@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/css/bootstrap.min.css">
-  <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">  <script src="//code.jquery.com/jquery-1.10.2.js"></script>  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+
+    <link rel="stylesheet" href="/css/iThing.css" type="text/css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+  <script src="/javascripts/jquery.mousewheel.min.js"></script>
+  <script src="/javascripts/jQRangeSliderMouseTouch.js"></script>
+  <script src="/javascripts/jQRangeSliderDraggable.js"></script>
+  <script src="/javascripts/jQRangeSliderHandle.js"></script>
+  <script src="/javascripts/jQRangeSliderBar.js"></script>
+  <script src="/javascripts/jQRangeSliderLabel.js"></script>
+  <script src="/javascripts/jQRangeSlider.js"></script>
+  <script src="/javascripts/jQDateRangeSliderHandle.js"></script>
+  <script src="/javascripts/jQDateRangeSlider.js"></script>
+  <script src="/javascripts/jQEditRangeSliderLabel.js"></script>
+  <script src="/javascripts/jQEditRangeSlider.js"></script>
+
+  <script src="/javascripts/jQRuler.js"></script>
   </head>
 <body>
 
