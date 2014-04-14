@@ -24,14 +24,14 @@ get '/clouds/:start/:end' => sub {
   print STDERR "req clouds start $start end $end\n";
 
   my $req = "$provider/getTopics?start=$start&end=$end&cluster=true&contents=5";
-  print "GET $req\n";
+  print STDERR "GET $req\n";
   my $json = LWP::Simple::get($req);
   return unless $json;
 
   my $data = from_json $json;
   unless ( @{$data} ) {
     my $req = "$provider/getTopics?start=$start&end=$end&cluster=true&contents=5";
-  print "GET $req\n";
+    print STDERR "GET $req\n";
     my $json = LWP::Simple::get($req);
     return unless $json;
     $data = from_json $json;
@@ -65,7 +65,7 @@ get '/clouds/:start/:end' => sub {
 
 get '/' => sub {
   my $req = "$provider/getTopics?start=20140301&end=20140331&cluster=true&contents=5";
-  print "GET $req\n";
+  print STDERR "GET $req\n";
   my $json = LWP::Simple::get($req);
   return unless $json;
 #print STDERR $json;

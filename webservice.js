@@ -164,7 +164,7 @@ function answer(req,res,status,data) {
 		k = req.cache_key || req.url;
 
 //	console.log("SET: "+k);
-	cache[k] = { status: status, data: data, expires: new Date().getTime() + 120000 };
+	cache[k] = { status: status, data: data, expires: new Date().getTime() + 12000000 };
 	res.writeHead(cache[k].status, {'Content-Type': 'text/plain; charset=utf-8'});
 	res.end(cache[k].data);
 
